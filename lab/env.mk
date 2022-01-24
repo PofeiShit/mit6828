@@ -1,0 +1,5 @@
+V = @
+
+#GCCPREFIX=
+
+#EMU=
