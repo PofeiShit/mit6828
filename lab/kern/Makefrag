@@ -6,6 +6,7 @@ KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld -nostdlib
 KERN_SRCFILES := kern/kernel.S \
 				kern/demo.c
 
+# only build files if they exists
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
 
 KERN_BINFILES :=

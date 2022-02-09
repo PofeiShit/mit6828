@@ -20,7 +20,7 @@ start:
 	movw %ax, %ss
 	movw %ax, %es
 	
-
+	# white demo
 	mov $0x02, %ah
 	int $0x16
 	mov %al, (LEDS)

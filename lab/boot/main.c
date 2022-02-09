@@ -55,11 +55,15 @@ void waitdisk(void)
 void readsect(void *dst, uint32_t offset)
 {
 	waitdisk();
-
+	// 0x1f2存放要读写的扇区数量
 	outb(0x1F2, 1);
+	// 0x1f3 存放要读写的扇区号码，就是偏移量
 	outb(0x1F3, offset);
+	// 0x1f4 存放读写柱面的低8位字节
 	outb(0x1F4, offset >> 8);
+	// 0x1f5 存放读写柱面的高2位字节
 	outb(0x1F5, offset >> 16);
+	// 0x1f6 存放要读写的磁盘号,磁头号，
 	outb(0x1F6, (offset >> 24) | 0xE0);
 	outb(0x1F7, 0x20);
 
