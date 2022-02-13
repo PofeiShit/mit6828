@@ -3,8 +3,9 @@ OBJDIRS += kern
 
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld -nostdlib
 
-KERN_SRCFILES := kern/kernel.S \
-				kern/demo.c
+KERN_SRCFILES := kern/entry.S \
+				kern/entrypgdir.c \
+				kern/init.c
 
 # only build files if they exists
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))

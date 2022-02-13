@@ -230,9 +230,33 @@ offset = (offset / SECTSIZE) + 1; 将偏移量转换为扇区偏移。跳过hard
 ```
 SECTIONS
 {
-  . = 0x100000  指定section虚拟地址
-  .text : AT(0x100000) 指定该sections的加载地址(physical memory) 
+  . = 0x100000  指定section虚拟地址，0xf0100000高虚拟地址。
+  .text : AT(0x100000) 指定该sections的加载地址(physical memory);kernel这段代码在内存的0x100000地址
 }
+### kernel.S
+```
+.globl _start // kernel.ld中指定入口符号
+_start = RELOC(entry) // entry的link address是0xf0100000。链接中的符号地址是相对起始符号的地址，_start根据RELOC计算得到0x100000刚好和物理地址重合。之后的一些符号根据偏移计算得到新地址吻合物理地址。
+```
+```
+movw    $0x1234,0x472            # warm boot
+```
+这句代码的作用是向0x472写入0x1234，告知BIOS下次为热引导
+
+这句语句在kernel.asm中显示的虚拟地址为：0xf010 0000，但实际上查询内核信息显示的kernel虚拟的入口地址是：0xf010 000c，
+```
+.long MULTIBOOT_HEADER_MAGIC
+.long MULTIBOOT_HEADER_FLAGS
+.long CHECKSUM
+```
+将entry.S中的这三行代码去除，两者即一致。
+```
+realelf -l kernel
+```
+显示entry point为0x100000(加上则是0x10000C)
+代码中标号都是相对于起始地址的偏移，无论是哪个地址都可以正常运行。只要和物理地址能够一致。
+
+kernel.ld中将.text段加载到物理地址0x100000中。前3个.long占用12个字节。movw的地址就在0x10000C。虚拟地址就是0xF010000C。
 ```
 ### inc/elf.h
 ```
@@ -326,3 +350,59 @@ obj/lib/printf.o转换成obj/kern/printf.o
 将所有相关的.o生成到kern文件夹下
 ```
 
+## entry.S
+---
+几个概念:
+
+page directory 页表目录：一级页表
+
+page directory entry 页表目录项：一级页表项
+
+page table：二级页表
+
+page table entry 页表项：二级页表项
+
+```
+__attribute__((__aligned__(PGSIZE)))
+pde_t entry_pgdir[NPDENTRIES] = {
+	// Map VA's [0, 4MB) to PA's [0, 4MB)
+	[0]
+		= ((uintptr_t)entry_pgtable - KERNBASE) + PTE_P,
+	// Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+	[KERNBASE>>PDXSHIFT]
+		= ((uintptr_t)entry_pgtable - KERNBASE) + PTE_P + PTE_W
+};
+宏定义展开:
+unsigned int entrypgdir[1024] = {
+    [0] = 0 | 0x001,  // 0000 0000 0001
+    [0xF0000000 >> 22] = 0 | 0x001 | 0x002
+};
+0xF0000000 >> 22 = 11 1100 0000 (十进制960)
+```
+### 一级分页例子
+
+根据 kernel.ld 链接器脚本的设定，内核的虚拟地址起始于 0xF0100000 即内核代码段的起始处，而内核的代码段被放置在内存物理地址 0x100000 处。我们刚刚看到目前的临时页表将虚拟地址 0xF0000000 映射到物理内存的 0x0 处，所以我们来尝试用刚刚了解到的内存分页机制来解析一下 0xF0100000 虚拟地址最后转换成物理地址是多少。
+```
+0xF0100000 = 1111 0000 00|01 0000 0000 0000 0000 0000
+
+0xF0100000 高 10 位 = 1111 0000 00 = 960
+
+0xF0100000 后 22 位 = 01 0000 0000 0000 0000 0000 = 1048576
+
+索引 960 对应  entrypgdir[ 0xF0000000 >> 22 ] 即基地址为 0x0
+
+换算的物理地址 = 0 + 1048576 = 1048576 = 0x100000
+
+即内核代码段所在内存物理地址 0x100000
+```
+
+```
+.data:
+	.p2align PGSHIFT
+	.globl bootstack
+bootstack:
+	.space KSTKSIZE
+	.globl bootstacktop
+bootstacktop:
+```
+.globl定义了一个名为bootstack的全局符号，这个全局符号指向一片由.space伪指令定义的、大小为KSTKSIZE、被0填充的数据区，这片数据区被作为kernel所使用的栈，而栈顶就是由.globl定义的全局符号bootstacktop。

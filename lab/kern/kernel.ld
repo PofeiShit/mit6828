@@ -8,7 +8,7 @@ ENTRY(_start)
 SECTIONS
 {
 	/* Link the kernel at this address: "." means the current address */
-	. = 0x00100000;
+	. = 0xF0100000;
 
 	.text : AT(0x100000) {
 		*(.text)
@@ -17,6 +17,8 @@ SECTIONS
 	.rodata : {
 		*(.rodata)
 	}
+	/* Adjust the address for the data segment to the next page */
+	. = ALIGN(0x1000);
 
 
 	/* The data segment */
