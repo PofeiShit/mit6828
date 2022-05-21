@@ -12,9 +12,9 @@ V = @
 # out the following line to use those tools (as opposed to the i386-jos-elf
 # tools that the 6.828 make system looks for by default).
 #
-# GCCPREFIX=/opt/homebrew/Cellar/x86_64-elf-gcc/11.2.0/bin/
+# GCCPREFIX=''
 
 # If the makefile cannot find your QEMU binary, uncomment the
 # following line and set it to the full path to QEMU.
 #
-# QEMU=/usr/local/bin/
+# QEMU=
